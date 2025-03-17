@@ -75,7 +75,7 @@ function RestaurantHeader(text) {
     src: "./add-button.png",
     alt: "음식점 추가"
   });
-  $title.textContent = "점심 뭐 먹지?";
+  $title.textContent = text;
   $header.appendChild($title);
   $header.appendChild($addButton);
   $addButton.appendChild($addButtonImg);
@@ -224,47 +224,6 @@ const dummy = [
 ];
 localStorage.setItem("dataList", JSON.stringify(dummy));
 const restaurantDataList = new RestaurantDataList();
-class SelectedFilterValue {
-  constructor() {
-    __privateAdd(this, _category);
-    __privateAdd(this, _sorting);
-    __privateAdd(this, _isWishList);
-    __privateSet(this, _category, "한식");
-    __privateSet(this, _sorting, "이름순");
-    __privateSet(this, _isWishList, false);
-  }
-  updateSelectedFilterValue(id, value) {
-    if (id === "category-filter") {
-      __privateSet(this, _category, value);
-    }
-    if (id === "sorting-filter") {
-      __privateSet(this, _sorting, value);
-    }
-    if (id === "restaurant-tab") {
-      __privateSet(this, _isWishList, value);
-    }
-  }
-  getSelectedFilterCategoryValue() {
-    return __privateGet(this, _category);
-  }
-  getSelectedFilterSortingValue() {
-    return __privateGet(this, _sorting);
-  }
-  getIsWishList() {
-    return __privateGet(this, _isWishList);
-  }
-}
-_category = new WeakMap();
-_sorting = new WeakMap();
-_isWishList = new WeakMap();
-const selectedFilterValue = new SelectedFilterValue();
-function reRenderRestaurantListContainer(parent, element) {
-  removeRestaurantListContainer();
-  parent.appendChild(element);
-}
-function removeRestaurantListContainer() {
-  document.querySelector(".restaurant-list-container").remove();
-}
 function RestaurantItem({
   id,
   src,
@@ -328,9 +287,9 @@ function RestaurantItem({
   }
   $restaurantStar.addEventListener("click", (event2) => {
     event2.stopPropagation();
-    toggleStar(event2.target);
+    toggleStar();
   });
-  function toggleStar(element) {
+  function toggleStar() {
     const isWish2 = restaurantDataList.updateIsWish(id);
     if (!isWish2 && isColumn) {
       $restaurantStar.classList.toggle("active");
@@ -374,6 +333,40 @@ function RestaurantListContainer(restaurantItems) {
   $restaurantListContainer.appendChild($restaurantList);
   return $restaurantListContainer;
 }
+class SelectedFilterValue {
+  constructor() {
+    __privateAdd(this, _category);
+    __privateAdd(this, _sorting);
+    __privateAdd(this, _isWishList);
+    __privateSet(this, _category, "전체");
+    __privateSet(this, _sorting, "이름순");
+    __privateSet(this, _isWishList, false);
+  }
+  updateSelectedFilterValue(id, value) {
+    if (id === "category-filter") {
+      __privateSet(this, _category, value);
+    }
+    if (id === "sorting-filter") {
+      __privateSet(this, _sorting, value);
+    }
+    if (id === "restaurant-tab") {
+      __privateSet(this, _isWishList, value);
+    }
+  }
+  getSelectedFilterCategoryValue() {
+    return __privateGet(this, _category);
+  }
+  getSelectedFilterSortingValue() {
+    return __privateGet(this, _sorting);
+  }
+  getIsWishList() {
+    return __privateGet(this, _isWishList);
+  }
+}
+_category = new WeakMap();
+_sorting = new WeakMap();
+_isWishList = new WeakMap();
+const selectedFilterValue = new SelectedFilterValue();
 function createDefaultOption() {
   const defaultContext = "선택해 주세요.";
   const $defaultOption = createElement({
@@ -428,6 +421,8 @@ function Select({
   $select.appendChild($options);
   return $select;
 }
+const CATEGORY = ["전체", "한식", "중식", "일식", "양식", "아시안", "기타"];
+const SORTING = ["이름순", "거리순"];
 function RestaurantFilterContainer() {
   const $restaurantFilterContainer = createElement({
     tag: "section",
@@ -438,7 +433,7 @@ function RestaurantFilterContainer() {
       name: "category",
       id: "category-filter",
       classNames: ["restaurant-filter"],
-      options: ["전체", "한식", "중식", "일식", "양식", "아시안", "기타"],
+      options: CATEGORY,
       selectedValue: selectedFilterValue.getSelectedFilterCategoryValue()
     })
   );
@@ -447,7 +442,7 @@ function RestaurantFilterContainer() {
       name: "sorting",
       id: "sorting-filter",
       classNames: ["restaurant-filter"],
-      options: ["이름순", "거리순"],
+      options: SORTING,
       selectedValue: selectedFilterValue.getSelectedFilterSortingValue()
     })
   );
@@ -509,17 +504,16 @@ function filterRestaurantDataList({ restaurantDataList: restaurantDataList2, isW
 }
 function filterByCategory(dataList) {
   const category = selectedFilterValue.getSelectedFilterCategoryValue();
-  selectedFilterValue.getSelectedFilterSortingValue();
   return dataList.filter(
     (data) => category === "전체" || data.category === category
   );
 }
 function sortByCategory(dataList) {
-  const category = selectedFilterValue.getSelectedFilterSortingValue();
-  if (category === "이름순") {
+  const sorting = selectedFilterValue.getSelectedFilterSortingValue();
+  if (sorting === "이름순") {
     dataList.sort((a, b) => a.name.localeCompare(b.name));
   }
-  if (category === "거리순") {
+  if (sorting === "거리순") {
     dataList.sort((a, b) => {
       if (a.distance > b.distance) return 1;
       if (a.distance < b.distance) return -1;
@@ -531,42 +525,59 @@ function sortByCategory(dataList) {
 function filterByStar(dataList) {
   return dataList.filter((data) => data.isWish === true) || [];
 }
+function reRenderRestaurantListContainer(parent, element) {
+  removeRestaurantListContainer();
+  parent.appendChild(element);
+}
+function removeRestaurantListContainer() {
+  document.querySelector(".restaurant-list-container").remove();
+}
+function createTabButton({ className, text, isWishTab }) {
+  const $tab = createElement({
+    tag: "button",
+    classNames: ["restaurant-tab", className]
+  });
+  $tab.textContent = text;
+  $tab.dataset.wish = isWishTab;
+  return $tab;
+}
+const TAB_TITLE_ALL = "모든 음식점";
+const TAB_TITLE_WISH = "자주 가는 음식점";
 function RestaurantFilterTabs() {
   const $restaurantFilterContainer = createElement({
     tag: "div",
     classNames: ["restaurant-filter-tabs"]
   });
-  const $allTab = createElement({
-    tag: "button",
-    classNames: ["restaurant-tab", "all-tab"]
+  const $allTab = createTabButton({
+    className: "all-tab",
+    text: TAB_TITLE_ALL,
+    isWishTab: false
   });
-  const $wishTab = createElement({
-    tag: "button",
-    classNames: ["restaurant-tab", "wish-tab"]
+  const $wishTab = createTabButton({
+    className: "wish-tab",
+    text: TAB_TITLE_WISH,
+    isWishTab: true
   });
-  $allTab.textContent = "모든 음식점";
-  $wishTab.textContent = "자주 가는 음식점";
   $restaurantFilterContainer.appendChild($allTab);
   $restaurantFilterContainer.appendChild($wishTab);
-  function wishListClassToggle() {
-    if (selectedFilterValue.getIsWishList()) {
-      $wishTab.classList.add("active");
-      $allTab.classList.remove("active");
-    } else {
-      $allTab.classList.add("active");
-      $wishTab.classList.remove("active");
-    }
+  updateActiveTab();
+  function updateActiveTab() {
+    const isWishList = selectedFilterValue.getIsWishList();
+    [$allTab, $wishTab].forEach(
+      ($tab) => $tab.classList.toggle("active", $tab.dataset.wish === String(isWishList))
+    );
   }
-  wishListClassToggle();
-  $allTab.addEventListener("click", () => {
-    selectedFilterValue.updateSelectedFilterValue("restaurant-tab", false);
-    wishListClassToggle();
+  function changeTab(event2) {
+    const isWish = event2.target.dataset.wish === "true";
+    selectedFilterValue.updateSelectedFilterValue("restaurant-tab", isWish);
+    updateActiveTab();
     Restaurant({ isReRender: true });
-  });
-  $wishTab.addEventListener("click", () => {
-    selectedFilterValue.updateSelectedFilterValue("restaurant-tab", true);
-    wishListClassToggle();
-    Restaurant({ isReRender: true });
+  }
+  [$allTab, $wishTab].forEach(($tab) => $tab.addEventListener("click", (event2) => {
+    changeTab(event2);
+  }));
+  $wishTab.addEventListener("click", (event2) => {
+    changeTab(event2);
   });
   return $restaurantFilterContainer;
 }
@@ -597,7 +608,7 @@ function Restaurant({ isReRender }) {
     }
   );
   const $body = document.querySelector("body");
-  const $restaurantHeader = RestaurantHeader();
+  const $restaurantHeader = RestaurantHeader("점심 뭐 먹지");
   const $restaurantFilterTabs = RestaurantFilterTabs();
   const $restaurantFilterContainer = RestaurantFilterContainer();
   const $restaurantListContainer = RestaurantListContainer(
@@ -614,11 +625,14 @@ function Restaurant({ isReRender }) {
   }
   const $restaurants = document.querySelectorAll(".restaurant");
   $restaurants.forEach(($restaurant) => {
+    RestaurantClickHandler($restaurant);
+  });
+  function RestaurantClickHandler($restaurant) {
     $restaurant.addEventListener("click", (event2) => {
       const restaurantId = event2.target.closest(".restaurant").id;
       Modal({ component: () => RestaurantItemDetailModal({ restaurantId, isColumn: true }) });
     });
-  });
+  }
 }
 function Input({ type, name, id, isRequired }) {
   const $input = createElement({
